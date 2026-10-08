@@ -13,17 +13,31 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class FortifyServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
      */
-    public function register(): void
+         public function register(): void
     {
-        //
-    }
+        $this->app->bind(
+            \Laravel\Fortify\Http\Requests\LoginRequest::class,
+            \App\Http\Requests\LoginRequest::class
+        );
 
+        $this->app->singleton(
+            \Laravel\Fortify\Contracts\LoginResponse::class,
+            \App\Http\Responses\LoginResponse::class
+        );
+
+        $this->app->singleton(
+            \Laravel\Fortify\Contracts\LogoutResponse::class,
+            \App\Http\Responses\LogoutResponse::class
+        );
+    }
     /**
      * Bootstrap any application services.
      */
@@ -37,6 +51,26 @@ class FortifyServiceProvider extends ServiceProvider
     Fortify::loginView(function () {
         return view('user.user-login');
     });
+
+            Fortify::authenticateUsing(function (Request $request) {
+            $user = User::where('email', $request->input('email'))->first();
+
+            if ($user === null) {
+                return null;
+            }
+
+            if (!Hash::check($request->input('password'), $user->password)) {
+                return null;
+            }
+
+            $is_admin_login = $request->is('admin/login');
+
+            if ($user->admin_status !== $is_admin_login) {
+                return null;
+            }
+
+            return $user;
+        });
 
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
