@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use App\Models\AttendanceRecord;
 
 class CorrectionRequestController extends Controller
 {
@@ -45,16 +46,30 @@ class CorrectionRequestController extends Controller
 
 
 
+    public function show(Request $request, int $id): RedirectResponse
+    {
+        $user = $request->user();
 
+        abort_if($user->admin_status, 403);
+
+        $application = $user->attendanceCorrectRequests()
+            ->findOrFail($id);
+
+        return redirect()->route('attendance_show', [
+            'id' => $application->attendance_record_id,
+        ]);
+    }
 
 
     public function store(
         AttendanceCorrectionRequest $request,
         int $id
     ): RedirectResponse {
-        $user = $request->user();
+         $user = $request->user();
 
-        abort_if($user->admin_status, 403);
+        if ($user->admin_status) {
+            return $this->adminUpdate($request, $id);
+        }
 
         $input = $request->validated();
 
@@ -120,7 +135,53 @@ class CorrectionRequestController extends Controller
 }
 
 
+    private function adminUpdate(
+        AttendanceCorrectionRequest $request,
+        int $id
+    ): RedirectResponse {
+        abort_unless($request->user()->admin_status, 403);
 
+        $input = $request->validated();
+
+        $owner_id = AttendanceRecord::findOrFail($id)->user_id;
+
+        DB::transaction(function () use ($owner_id, $input, $id): void {
+            $locked_user = User::whereKey($owner_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $attendance_record = $locked_user->attendanceRecords()
+                ->whereKey($id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $attendance_record->update([
+                'clock_in' => $input['new_clock_in'] . ':00',
+                'clock_out' => $input['new_clock_out'] . ':00',
+                'comment' => $input['comment'],
+            ]);
+
+            $breaks = [];
+
+            foreach ($input['new_break_in'] ?? [] as $index => $break_in) {
+                if ($break_in === null || $break_in === '') {
+                    continue;
+                }
+
+                $breaks[] = [
+                    'break_in' => $break_in . ':00',
+                    'break_out' => $input['new_break_out'][$index] . ':00',
+                ];
+            }
+
+            $attendance_record->breaks()->delete();
+            $attendance_record->breaks()->createMany($breaks);
+        }, 3);
+
+        return redirect()->route('admin_attendance_show', [
+            'id' => $id,
+        ]);
+    }
 
 
     private function storeBreaks(

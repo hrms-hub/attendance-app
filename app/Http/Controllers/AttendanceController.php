@@ -72,36 +72,40 @@ class AttendanceController extends Controller
 
 
 
-public function show(
-    Request $request,
-    int $id,
-    AttendanceDetailData $detail_data
-): View {
-    $user = $request->user();
+    public function show(
+        Request $request,
+        int $id,
+        AttendanceDetailData $detail_data
+    ): View|RedirectResponse {
+        $user = $request->user();
 
-    abort_if($user->admin_status, 403);
+        if ($user->admin_status) {
+            return redirect()->route('admin_attendance_show', [
+                'id' => $id,
+            ]);
+        }
 
-    $attendance_record = $user->attendanceRecords()
-        ->with('breaks')
-        ->findOrFail($id);
+        $attendance_record = $user->attendanceRecords()
+            ->with('breaks')
+            ->findOrFail($id);
 
-    $application = $attendance_record->applications()
-        ->with('proposalBreaks')
-        ->where(
-            'approval_status',
-            AttendanceCorrectRequest::STATUS_PENDING
-        )
-        ->first();
+        $application = $attendance_record->applications()
+            ->with('proposalBreaks')
+            ->where(
+                'approval_status',
+                AttendanceCorrectRequest::STATUS_PENDING
+            )
+            ->first();
 
-    return view('user.user-detail', [
-        'user' => $user,
-        'data' => $detail_data->make(
-            $attendance_record,
-            $application,
-            $request->old()
-        ),
-    ]);
-}
+        return view('user.user-detail', [
+            'user' => $user,
+            'data' => $detail_data->make(
+                $attendance_record,
+                $application,
+                $request->old()
+            ),
+        ]);
+    }
 
 
     public function store(PunchRequest $request): RedirectResponse

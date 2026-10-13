@@ -8,6 +8,8 @@ use App\Models\AttendanceRecord;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\View\View;
+use App\Services\AttendanceDetailData;
+use Illuminate\Http\Request;
 
 class AttendanceController extends Controller
 {
@@ -42,6 +44,26 @@ class AttendanceController extends Controller
             'nextDay' => $next_day,
             'users' => $users,
             'attendanceRecords' => $attendance_records,
+        ]);
+    }
+
+    public function show(
+        Request $request,
+        int $id,
+        AttendanceDetailData $detail_data
+    ): View {
+        abort_unless($request->user()->admin_status, 403);
+
+        $attendance_record = AttendanceRecord::with(['user', 'breaks'])
+            ->findOrFail($id);
+
+        return view('admin.admin-detail', [
+            'user' => $attendance_record->user,
+            'attendanceRecord' => $detail_data->make(
+                $attendance_record,
+                null,
+                $request->old()
+            ),
         ]);
     }
 }

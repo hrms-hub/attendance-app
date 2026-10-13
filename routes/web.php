@@ -86,6 +86,10 @@ Route::middleware(['auth', AdminMiddleware::class])->group(function () {
     Route::get('/admin/attendance/list', [AdminAttendanceController::class, 'index'])
         ->name('admin_attendance_list');
 
+    Route::get('/admin/attendance/{id}', [AdminAttendanceController::class, 'show'])
+        ->whereNumber('id')
+        ->name('admin_attendance_show');
+
     Route::post('/admin/logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('admin_logout');
 
