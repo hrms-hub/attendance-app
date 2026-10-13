@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AttendanceController as AdminAttendanceController
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Controllers\CorrectionRequestController;
 use App\Http\Controllers\Admin\CorrectionRequestController as AdminCorrectionRequestController;
+use App\Http\Controllers\Admin\StaffController as AdminStaffController;
 
 Route::get('/', function (Request $request) {
     $user = $request->user();
@@ -89,6 +90,13 @@ Route::middleware(['auth', AdminMiddleware::class])->group(function () {
     Route::get('/admin/attendance/{id}', [AdminAttendanceController::class, 'show'])
         ->whereNumber('id')
         ->name('admin_attendance_show');
+
+    Route::get('/admin/staff/list', [AdminStaffController::class, 'index'])
+        ->name('admin_staff_list');
+
+    Route::get('/admin/attendance/staff/{id}', [AdminStaffController::class, 'show'])
+        ->whereNumber('id')
+        ->name('admin_staff_attendance_list');
 
     Route::post('/admin/logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('admin_logout');
