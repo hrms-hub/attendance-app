@@ -8,7 +8,9 @@ use Illuminate\Validation\Validator;
 class AttendanceCorrectionRequest extends FormRequest
 {
     private const CLOCK_ERROR = '出勤時間もしくは退勤時間が不適切な値です';
+
     private const BREAK_ERROR = '休憩時間が不適切な値です';
+
     private const BREAK_END_ERROR = '休憩時間もしくは退勤時間が不適切な値です';
 
     public function authorize(): bool
@@ -61,7 +63,10 @@ class AttendanceCorrectionRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                if ($validator->errors()->isNotEmpty()) {
+                if (
+                    $validator->errors()->has('new_clock_in')
+                    || $validator->errors()->has('new_clock_out')
+                ) {
                     return;
                 }
 
@@ -74,6 +79,13 @@ class AttendanceCorrectionRequest extends FormRequest
                         self::CLOCK_ERROR
                     );
 
+                    return;
+                }
+
+                if (
+                    $validator->errors()->has('new_break_in')
+                    || $validator->errors()->has('new_break_out')
+                ) {
                     return;
                 }
 
@@ -96,6 +108,12 @@ class AttendanceCorrectionRequest extends FormRequest
         $intervals = [];
 
         foreach ($indexes as $index) {
+            if (
+                $validator->errors()->has("new_break_in.{$index}") || $validator->errors()->has("new_break_out.{$index}")
+            ) {
+                continue;
+            }
+
             $break_in = $break_starts[$index] ?? '';
             $break_out = $break_ends[$index] ?? '';
 
@@ -109,6 +127,7 @@ class AttendanceCorrectionRequest extends FormRequest
                     : "new_break_out.{$index}";
 
                 $validator->errors()->add($error_key, self::BREAK_ERROR);
+
                 continue;
             }
 
@@ -117,6 +136,7 @@ class AttendanceCorrectionRequest extends FormRequest
                     "new_break_in.{$index}",
                     self::BREAK_ERROR
                 );
+
                 continue;
             }
 
@@ -125,6 +145,7 @@ class AttendanceCorrectionRequest extends FormRequest
                     "new_break_out.{$index}",
                     self::BREAK_END_ERROR
                 );
+
                 continue;
             }
 
@@ -133,6 +154,7 @@ class AttendanceCorrectionRequest extends FormRequest
                     "new_break_out.{$index}",
                     self::BREAK_ERROR
                 );
+
                 continue;
             }
 
