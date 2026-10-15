@@ -156,7 +156,7 @@
                 </div>
 
                 <div class="form__button">
-                    <p class="readonly-message">承認待ちのため修正できません</p>
+                    <p class="readonly-message">承認待ちのため修正はできません。</p>
                 </div>
             @endif
 
