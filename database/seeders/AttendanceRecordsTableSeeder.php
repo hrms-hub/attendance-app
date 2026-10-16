@@ -10,40 +10,41 @@ use Illuminate\Support\Facades\DB;
 
 class AttendanceRecordsTableSeeder extends Seeder
 {
-    private const USER_EMAIL = 'user@example.com';
-    private const SAMPLE_DAYS_AGO = [3, 2, 1];
-
     public function run(): void
     {
-        $user = User::where('email', self::USER_EMAIL)->firstOrFail();
+        $users = User::query()->orderBy('id')->get();
         $today = CarbonImmutable::today('Asia/Tokyo');
+        $start_date = $today->startOfMonth()->subMonth();
+        $end_date = $today->subDay();
 
-        DB::transaction(function () use ($user, $today): void {
-            foreach (self::SAMPLE_DAYS_AGO as $days_ago) {
-                $attendance_date = $today
-                    ->subDays($days_ago)
-                    ->toDateString();
+        DB::transaction(function () use ($users, $start_date, $end_date): void {
+            foreach ($users as $user) {
+                for ($date = $start_date; $date->lte($end_date); $date = $date->addDay()) {
+                    if ($date->isWeekend()) {
+                        continue;
+                    }
 
-                $attendance_record = AttendanceRecord::firstOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'date' => $attendance_date,
-                    ],
-                    [
-                        'clock_in' => '09:00:00',
-                        'clock_out' => '18:00:00',
-                        'comment' => null,
-                    ]
-                );
+                    $attendance_record = AttendanceRecord::firstOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'date' => $date->toDateString(),
+                        ],
+                        [
+                            'clock_in' => '09:00:00',
+                            'clock_out' => '18:00:00',
+                            'comment' => null,
+                        ]
+                    );
 
-                if (!$attendance_record->wasRecentlyCreated) {
-                    continue;
+                    if (! $attendance_record->wasRecentlyCreated) {
+                        continue;
+                    }
+
+                    $attendance_record->breaks()->create([
+                        'break_in' => '12:00:00',
+                        'break_out' => '13:00:00',
+                    ]);
                 }
-
-                $attendance_record->breaks()->create([
-                    'break_in' => '12:00:00',
-                    'break_out' => '13:00:00',
-                ]);
             }
         });
     }

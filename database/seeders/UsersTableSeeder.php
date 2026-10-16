@@ -8,19 +8,24 @@ use Illuminate\Support\Facades\Hash;
 
 class UsersTableSeeder extends Seeder
 {
-    private const DEFAULT_PASSWORD = 'password123';
+    private const DEFAULT_PASSWORD = 'password';
 
     public function run(): void
     {
         $seed_users = [
             [
-                'name' => '一般ユーザー',
-                'email' => 'user@example.com',
+                'name' => '一般ユーザー1',
+                'email' => 'user1@example.com',
                 'admin_status' => false,
             ],
             [
-                'name' => '管理者',
-                'email' => 'admin@example.com',
+                'name' => '一般ユーザー2',
+                'email' => 'user2@example.com',
+                'admin_status' => false,
+            ],
+            [
+                'name' => '管理者ユーザー',
+                'email' => 'user3@example.com',
                 'admin_status' => true,
             ],
         ];
@@ -33,6 +38,7 @@ class UsersTableSeeder extends Seeder
             $user->name = $seed_user['name'];
             $user->password = Hash::make(self::DEFAULT_PASSWORD);
             $user->admin_status = $seed_user['admin_status'];
+            $user->email_verified_at ??= now();
             $user->save();
         }
     }
