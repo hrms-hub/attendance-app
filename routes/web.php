@@ -1,15 +1,15 @@
 <?php
 
-use App\Http\Controllers\Auth\RegisteredUserController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AttendanceController;
-use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 use App\Http\Controllers\Admin\AttendanceController as AdminAttendanceController;
-use App\Http\Middleware\AdminMiddleware;
-use App\Http\Controllers\CorrectionRequestController;
 use App\Http\Controllers\Admin\CorrectionRequestController as AdminCorrectionRequestController;
 use App\Http\Controllers\Admin\StaffController as AdminStaffController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\CorrectionRequestController;
+use App\Http\Middleware\AdminMiddleware;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 
 Route::get('/', function (Request $request) {
     $user = $request->user();
@@ -50,38 +50,33 @@ Route::middleware('auth')->group(function () {
     Route::get('/attendance/list', [AttendanceController::class, 'index'])
         ->name('attendance_index');
 
-        Route::get('/attendance/detail/{id}', [AttendanceController::class, 'show'])
-    ->whereNumber('id')
-    ->name('attendance_show');
+    Route::get('/attendance/detail/{id}', [AttendanceController::class, 'show'])
+        ->whereNumber('id')
+        ->name('attendance_show');
 
-Route::get('/attendance/{id}', [AttendanceController::class, 'show'])
-    ->whereNumber('id')
-    ->name('attendance_show_legacy');
+    Route::get('/attendance/{id}', [AttendanceController::class, 'show'])
+        ->whereNumber('id')
+        ->name('attendance_show_legacy');
 
-Route::post('/attendance/detail/{id}', [CorrectionRequestController::class, 'store'])
-    ->whereNumber('id')
-    ->name('attendance_correction_store');
+    Route::post('/attendance/detail/{id}', [CorrectionRequestController::class, 'store'])
+        ->whereNumber('id')
+        ->name('attendance_correction_store');
 
-Route::post('/attendance/{id}', [CorrectionRequestController::class, 'store'])
-    ->whereNumber('id')
-    ->name('attendance_correction_store_legacy');
+    Route::post('/attendance/{id}', [CorrectionRequestController::class, 'store'])
+        ->whereNumber('id')
+        ->name('attendance_correction_store_legacy');
 
+    Route::get('/stamp_correction_request/list', [CorrectionRequestController::class, 'index'])
+        ->name('application_index');
 
-Route::get('/stamp_correction_request/list', [CorrectionRequestController::class, 'index'])
-    ->name('application_index');
+    Route::get('/application/list', [CorrectionRequestController::class, 'index'])
+        ->name('application_index_legacy');
 
-Route::get('/application/list', [CorrectionRequestController::class, 'index'])
-    ->name('application_index_legacy');
-
-Route::get('/application/{id}', [CorrectionRequestController::class, 'show'])
-    ->whereNumber('id')
-    ->name('application_show');
-
-
+    Route::get('/application/{id}', [CorrectionRequestController::class, 'show'])
+        ->whereNumber('id')
+        ->name('application_show');
 
 });
-
-
 
 Route::middleware(['auth', AdminMiddleware::class])->group(function () {
     Route::get('/admin/attendance/list', [AdminAttendanceController::class, 'index'])

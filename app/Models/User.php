@@ -15,8 +15,11 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     public const STATUS_OFF_DUTY = '勤務外';
+
     public const STATUS_WORKING = '出勤中';
+
     public const STATUS_ON_BREAK = '休憩中';
+
     public const STATUS_FINISHED = '退勤済';
 
     protected $fillable = [
@@ -60,23 +63,23 @@ class User extends Authenticatable
             get: function (): string {
                 $today = CarbonImmutable::today('Asia/Tokyo')->toDateString();
 
-                $attendance_record = $this->attendanceRecords()
+                $attendanceRecord = $this->attendanceRecords()
                     ->where('date', $today)
                     ->first();
 
-                if ($attendance_record === null) {
+                if ($attendanceRecord === null) {
                     return self::STATUS_OFF_DUTY;
                 }
 
-                if ($attendance_record->clock_out !== null) {
+                if ($attendanceRecord->clock_out !== null) {
                     return self::STATUS_FINISHED;
                 }
 
-                $has_open_break = $attendance_record->breaks()
+                $hasOpenBreak = $attendanceRecord->breaks()
                     ->whereNull('break_out')
                     ->exists();
 
-                if ($has_open_break) {
+                if ($hasOpenBreak) {
                     return self::STATUS_ON_BREAK;
                 }
 

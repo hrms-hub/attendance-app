@@ -15,12 +15,12 @@ class AttendanceFilterRequest extends FormRequest
 
     public function rules(): array
     {
-        $date_format = $this->is('admin/attendance/list')
+        $dateFormat = $this->is('admin/attendance/list')
             ? 'Y-m-d'
             : 'Y-m';
 
         return [
-            'date' => ['nullable', 'date_format:' . $date_format],
+            'date' => ['nullable', 'date_format:'.$dateFormat],
         ];
     }
 

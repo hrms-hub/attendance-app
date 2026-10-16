@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class CorrectionRequestController extends Controller
 {
+    private const TRANSACTION_ATTEMPTS = 3;
+
     public function show(Request $request, int $id): View
     {
         abort_unless($request->user()->admin_status, 403);
@@ -45,25 +47,25 @@ class CorrectionRequestController extends Controller
 
         abort_unless($admin->admin_status, 403);
 
-        $application_reference = AttendanceCorrectRequest::findOrFail($id);
+        $applicationReference = AttendanceCorrectRequest::findOrFail($id);
 
         DB::transaction(function () use (
             $admin,
-            $application_reference,
+            $applicationReference,
             $id
         ): void {
-            $locked_user = User::whereKey($application_reference->user_id)
+            $lockedUser = User::whereKey($applicationReference->user_id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $attendance_record = $locked_user->attendanceRecords()
-                ->whereKey($application_reference->attendance_record_id)
+            $attendanceRecord = $lockedUser->attendanceRecords()
+                ->whereKey($applicationReference->attendance_record_id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $application = $attendance_record->applications()
+            $application = $attendanceRecord->applications()
                 ->whereKey($id)
-                ->where('user_id', $locked_user->id)
+                ->where('user_id', $lockedUser->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -74,30 +76,30 @@ class CorrectionRequestController extends Controller
                 return;
             }
 
-            $proposal_breaks = $application->proposalBreaks()
+            $proposalBreaks = $application->proposalBreaks()
                 ->orderBy('id')
                 ->get()
-                ->map(fn ($proposal_break) => [
-                    'break_in' => $proposal_break->break_in,
-                    'break_out' => $proposal_break->break_out,
+                ->map(fn ($proposalBreak) => [
+                    'break_in' => $proposalBreak->break_in,
+                    'break_out' => $proposalBreak->break_out,
                 ])
                 ->all();
 
-            $attendance_record->update([
+            $attendanceRecord->update([
                 'clock_in' => $application->new_clock_in,
                 'clock_out' => $application->new_clock_out,
                 'comment' => $application->comment,
             ]);
 
-            $attendance_record->breaks()->delete();
-            $attendance_record->breaks()->createMany($proposal_breaks);
+            $attendanceRecord->breaks()->delete();
+            $attendanceRecord->breaks()->createMany($proposalBreaks);
 
             $application->update([
                 'approval_status' => AttendanceCorrectRequest::STATUS_APPROVED,
                 'approved_by' => $admin->id,
                 'approved_at' => now(),
             ]);
-        }, 3);
+        }, self::TRANSACTION_ATTEMPTS);
 
         return redirect()->route('admin_application_show', [
             'id' => $id,

@@ -8,71 +8,71 @@ use App\Models\AttendanceRecord;
 class AttendanceDetailData
 {
     public function make(
-        AttendanceRecord $attendance_record,
+        AttendanceRecord $attendanceRecord,
         ?AttendanceCorrectRequest $application,
-        array $old_input = []
+        array $oldInput = []
     ): array {
         $breaks = $application === null
-            ? $attendance_record->breaks
+            ? $attendanceRecord->breaks
             : $application->proposalBreaks;
 
         $data = [
-            'id' => $attendance_record->id,
-            'year' => $attendance_record->date->format('Y年'),
-            'date' => $attendance_record->date->format('n月j日'),
+            'id' => $attendanceRecord->id,
+            'year' => $attendanceRecord->date->format('Y年'),
+            'date' => $attendanceRecord->date->format('n月j日'),
             'clock_in' => $this->formatClockTime(
-                $application?->new_clock_in ?? $attendance_record->clock_in
+                $application?->new_clock_in ?? $attendanceRecord->clock_in
             ),
             'clock_out' => $this->formatClockTime(
-                $application?->new_clock_out ?? $attendance_record->clock_out
+                $application?->new_clock_out ?? $attendanceRecord->clock_out
             ),
-            'breaks' => $breaks->values()->map(fn ($break_record) => [
-                'break_in' => $this->formatClockTime($break_record->break_in),
-                'break_out' => $this->formatClockTime($break_record->break_out),
+            'breaks' => $breaks->values()->map(fn ($breakRecord) => [
+                'break_in' => $this->formatClockTime($breakRecord->break_in),
+                'break_out' => $this->formatClockTime($breakRecord->break_out),
             ])->all(),
             'comment' => $application?->comment
-                ?? $attendance_record->comment
+                ?? $attendanceRecord->comment
                 ?? '',
             'application' => $application,
         ];
 
-        if ($application !== null || $old_input === []) {
+        if ($application !== null || $oldInput === []) {
             return $data;
         }
 
-        $data['clock_in'] = $this->asText($old_input['new_clock_in'] ?? '');
-        $data['clock_out'] = $this->asText($old_input['new_clock_out'] ?? '');
-        $data['comment'] = $this->asText($old_input['comment'] ?? '');
-        $data['breaks'] = $this->restoreBreaks($old_input);
+        $data['clock_in'] = $this->asText($oldInput['new_clock_in'] ?? '');
+        $data['clock_out'] = $this->asText($oldInput['new_clock_out'] ?? '');
+        $data['comment'] = $this->asText($oldInput['comment'] ?? '');
+        $data['breaks'] = $this->restoreBreaks($oldInput);
 
         return $data;
     }
 
-    private function restoreBreaks(array $old_input): array
+    private function restoreBreaks(array $oldInput): array
     {
-        $break_starts = $old_input['new_break_in'] ?? [];
-        $break_ends = $old_input['new_break_out'] ?? [];
+        $breakStarts = $oldInput['new_break_in'] ?? [];
+        $breakEnds = $oldInput['new_break_out'] ?? [];
 
-        $break_starts = is_array($break_starts) ? $break_starts : [];
-        $break_ends = is_array($break_ends) ? $break_ends : [];
+        $breakStarts = is_array($breakStarts) ? $breakStarts : [];
+        $breakEnds = is_array($breakEnds) ? $breakEnds : [];
 
         $indexes = array_unique(array_merge(
-            array_keys($break_starts),
-            array_keys($break_ends)
+            array_keys($breakStarts),
+            array_keys($breakEnds)
         ));
         $breaks = [];
 
         foreach ($indexes as $index) {
             $breaks[] = [
-                'break_in' => $this->asText($break_starts[$index] ?? ''),
-                'break_out' => $this->asText($break_ends[$index] ?? ''),
+                'break_in' => $this->asText($breakStarts[$index] ?? ''),
+                'break_out' => $this->asText($breakEnds[$index] ?? ''),
             ];
         }
 
         if ($breaks !== []) {
-            $last_break = $breaks[count($breaks) - 1];
+            $lastBreak = $breaks[count($breaks) - 1];
 
-            if ($last_break['break_in'] === '' && $last_break['break_out'] === '') {
+            if ($lastBreak['break_in'] === '' && $lastBreak['break_out'] === '') {
                 array_pop($breaks);
             }
         }

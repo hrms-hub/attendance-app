@@ -14,17 +14,17 @@ class AttendanceRecordsTableSeeder extends Seeder
     {
         $users = User::query()->orderBy('id')->get();
         $today = CarbonImmutable::today('Asia/Tokyo');
-        $start_date = $today->startOfMonth()->subMonth();
-        $end_date = $today->subDay();
+        $startDate = $today->startOfMonth()->subMonth();
+        $endDate = $today->subDay();
 
-        DB::transaction(function () use ($users, $start_date, $end_date): void {
+        DB::transaction(function () use ($users, $startDate, $endDate): void {
             foreach ($users as $user) {
-                for ($date = $start_date; $date->lte($end_date); $date = $date->addDay()) {
+                for ($date = $startDate; $date->lte($endDate); $date = $date->addDay()) {
                     if ($date->isWeekend()) {
                         continue;
                     }
 
-                    $attendance_record = AttendanceRecord::firstOrCreate(
+                    $attendanceRecord = AttendanceRecord::firstOrCreate(
                         [
                             'user_id' => $user->id,
                             'date' => $date->toDateString(),
@@ -36,11 +36,11 @@ class AttendanceRecordsTableSeeder extends Seeder
                         ]
                     );
 
-                    if (! $attendance_record->wasRecentlyCreated) {
+                    if (! $attendanceRecord->wasRecentlyCreated) {
                         continue;
                     }
 
-                    $attendance_record->breaks()->create([
+                    $attendanceRecord->breaks()->create([
                         'break_in' => '12:00:00',
                         'break_out' => '13:00:00',
                     ]);

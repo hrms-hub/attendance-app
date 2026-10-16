@@ -12,16 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('breaks', function (Blueprint $table) {
-          $table->id();
+            $table->id();
 
-        $table->foreignId('attendance_record_id')
-            ->constrained('attendance_records')
-            ->onDelete('cascade');
+            $table->foreignId('attendance_record_id')
+                ->constrained('attendance_records')
+                ->onDelete('cascade');
 
-        $table->time('break_in');
-        $table->time('break_out')->nullable();
-        $table->timestamps();
-    });
+            $table->time('break_in');
+            $table->time('break_out')->nullable();
+            $table->timestamps();
+        });
     }
 
     /**

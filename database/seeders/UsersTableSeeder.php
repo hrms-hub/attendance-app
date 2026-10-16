@@ -12,7 +12,7 @@ class UsersTableSeeder extends Seeder
 
     public function run(): void
     {
-        $seed_users = [
+        $seedUsers = [
             [
                 'name' => '一般ユーザー1',
                 'email' => 'user1@example.com',
@@ -30,14 +30,14 @@ class UsersTableSeeder extends Seeder
             ],
         ];
 
-        foreach ($seed_users as $seed_user) {
+        foreach ($seedUsers as $seedUser) {
             $user = User::firstOrNew([
-                'email' => $seed_user['email'],
+                'email' => $seedUser['email'],
             ]);
 
-            $user->name = $seed_user['name'];
+            $user->name = $seedUser['name'];
             $user->password = Hash::make(self::DEFAULT_PASSWORD);
-            $user->admin_status = $seed_user['admin_status'];
+            $user->admin_status = $seedUser['admin_status'];
             $user->email_verified_at ??= now();
             $user->save();
         }

@@ -4,17 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AttendanceCorrectionRequest;
 use App\Models\AttendanceCorrectRequest;
+use App\Models\AttendanceRecord;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Models\AttendanceRecord;
+use Illuminate\Support\Facades\DB;
 
 class CorrectionRequestController extends Controller
 {
-
+    private const TRANSACTION_ATTEMPTS = 3;
 
     public function index(Request $request): View
     {
@@ -24,7 +24,7 @@ class CorrectionRequestController extends Controller
             return $this->adminIndex();
         }
 
-        $formatted_applications = $user->attendanceCorrectRequests()
+        $formattedApplications = $user->attendanceCorrectRequests()
             ->orderByDesc('application_date')
             ->orderByDesc('id')
             ->get()
@@ -40,11 +40,9 @@ class CorrectionRequestController extends Controller
 
         return view('user.user-application-list', [
             'user' => $user,
-            'formattedApplications' => $formatted_applications,
+            'formattedApplications' => $formattedApplications,
         ]);
     }
-
-
 
     public function show(Request $request, int $id): RedirectResponse
     {
@@ -60,12 +58,11 @@ class CorrectionRequestController extends Controller
         ]);
     }
 
-
     public function store(
         AttendanceCorrectionRequest $request,
         int $id
     ): RedirectResponse {
-         $user = $request->user();
+        $user = $request->user();
 
         if ($user->admin_status) {
             return $this->adminUpdate($request, $id);
@@ -74,31 +71,31 @@ class CorrectionRequestController extends Controller
         $input = $request->validated();
 
         DB::transaction(function () use ($user, $input, $id): void {
-            $locked_user = User::whereKey($user->id)
+            $lockedUser = User::whereKey($user->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $attendance_record = $locked_user->attendanceRecords()
+            $attendanceRecord = $lockedUser->attendanceRecords()
                 ->whereKey($id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $has_pending_application = $attendance_record->applications()
+            $hasPendingApplication = $attendanceRecord->applications()
                 ->where(
                     'approval_status',
                     AttendanceCorrectRequest::STATUS_PENDING
                 )
                 ->exists();
 
-            if ($has_pending_application) {
+            if ($hasPendingApplication) {
                 return;
             }
 
-            $application = $attendance_record->applications()->create([
-                'user_id' => $locked_user->id,
-                'new_date' => $attendance_record->date->toDateString(),
-                'new_clock_in' => $input['new_clock_in'] . ':00',
-                'new_clock_out' => $input['new_clock_out'] . ':00',
+            $application = $attendanceRecord->applications()->create([
+                'user_id' => $lockedUser->id,
+                'new_date' => $attendanceRecord->date->toDateString(),
+                'new_clock_in' => $input['new_clock_in'].':00',
+                'new_clock_out' => $input['new_clock_out'].':00',
                 'comment' => $input['comment'],
                 'approval_status' => AttendanceCorrectRequest::STATUS_PENDING,
                 'application_date' => CarbonImmutable::today('Asia/Tokyo')
@@ -111,29 +108,27 @@ class CorrectionRequestController extends Controller
         return redirect()->route('attendance_show', ['id' => $id]);
     }
 
-
     private function adminIndex(): View
-{
-    $applications = AttendanceCorrectRequest::with([
-        'user',
-        'attendanceRecord',
-    ])
-        ->orderByDesc('application_date')
-        ->orderByDesc('id')
-        ->get();
+    {
+        $applications = AttendanceCorrectRequest::with([
+            'user',
+            'attendanceRecord',
+        ])
+            ->orderByDesc('application_date')
+            ->orderByDesc('id')
+            ->get();
 
-    foreach ($applications as $application) {
-        $application->setRelation(
-            'AttendanceRecord',
-            $application->attendanceRecord
-        );
+        foreach ($applications as $application) {
+            $application->setRelation(
+                'AttendanceRecord',
+                $application->attendanceRecord
+            );
+        }
+
+        return view('admin.admin-application-list', [
+            'applications' => $applications,
+        ]);
     }
-
-    return view('admin.admin-application-list', [
-        'applications' => $applications,
-    ]);
-}
-
 
     private function adminUpdate(
         AttendanceCorrectionRequest $request,
@@ -143,64 +138,63 @@ class CorrectionRequestController extends Controller
 
         $input = $request->validated();
 
-        $owner_id = AttendanceRecord::findOrFail($id)->user_id;
+        $ownerId = AttendanceRecord::findOrFail($id)->user_id;
 
-        DB::transaction(function () use ($owner_id, $input, $id): void {
-            $locked_user = User::whereKey($owner_id)
+        DB::transaction(function () use ($ownerId, $input, $id): void {
+            $lockedUser = User::whereKey($ownerId)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $attendance_record = $locked_user->attendanceRecords()
+            $attendanceRecord = $lockedUser->attendanceRecords()
                 ->whereKey($id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $attendance_record->update([
-                'clock_in' => $input['new_clock_in'] . ':00',
-                'clock_out' => $input['new_clock_out'] . ':00',
+            $attendanceRecord->update([
+                'clock_in' => $input['new_clock_in'].':00',
+                'clock_out' => $input['new_clock_out'].':00',
                 'comment' => $input['comment'],
             ]);
 
             $breaks = [];
 
-            foreach ($input['new_break_in'] ?? [] as $index => $break_in) {
-                if ($break_in === null || $break_in === '') {
+            foreach ($input['new_break_in'] ?? [] as $index => $breakIn) {
+                if ($breakIn === null || $breakIn === '') {
                     continue;
                 }
 
                 $breaks[] = [
-                    'break_in' => $break_in . ':00',
-                    'break_out' => $input['new_break_out'][$index] . ':00',
+                    'break_in' => $breakIn.':00',
+                    'break_out' => $input['new_break_out'][$index].':00',
                 ];
             }
 
-            $attendance_record->breaks()->delete();
-            $attendance_record->breaks()->createMany($breaks);
-        }, 3);
+            $attendanceRecord->breaks()->delete();
+            $attendanceRecord->breaks()->createMany($breaks);
+        }, self::TRANSACTION_ATTEMPTS);
 
         return redirect()->route('admin_attendance_show', [
             'id' => $id,
         ]);
     }
 
-
     private function storeBreaks(
         AttendanceCorrectRequest $application,
         array $input
     ): void {
-        $proposal_breaks = [];
+        $proposalBreaks = [];
 
-        foreach ($input['new_break_in'] ?? [] as $index => $break_in) {
-            if ($break_in === null || $break_in === '') {
+        foreach ($input['new_break_in'] ?? [] as $index => $breakIn) {
+            if ($breakIn === null || $breakIn === '') {
                 continue;
             }
 
-            $proposal_breaks[] = [
-                'break_in' => $break_in . ':00',
-                'break_out' => $input['new_break_out'][$index] . ':00',
+            $proposalBreaks[] = [
+                'break_in' => $breakIn.':00',
+                'break_out' => $input['new_break_out'][$index].':00',
             ];
         }
 
-        $application->proposalBreaks()->createMany($proposal_breaks);
+        $application->proposalBreaks()->createMany($proposalBreaks);
     }
 }

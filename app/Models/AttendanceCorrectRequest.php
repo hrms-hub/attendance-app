@@ -12,6 +12,7 @@ class AttendanceCorrectRequest extends Model
     use HasFactory;
 
     public const STATUS_PENDING = '承認待ち';
+
     public const STATUS_APPROVED = '承認済み';
 
     protected $fillable = [

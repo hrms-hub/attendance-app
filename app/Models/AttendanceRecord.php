@@ -13,6 +13,10 @@ class AttendanceRecord extends Model
 {
     use HasFactory;
 
+    private const SECONDS_PER_HOUR = 3600;
+
+    private const SECONDS_PER_MINUTE = 60;
+
     protected $fillable = [
         'user_id',
         'date',
@@ -61,32 +65,32 @@ class AttendanceRecord extends Model
                     return null;
                 }
 
-                $working_seconds = $this->timeToTimestamp($this->clock_out)
+                $workingSeconds = $this->timeToTimestamp($this->clock_out)
                     - $this->timeToTimestamp($this->clock_in)
                     - $this->totalBreakSeconds();
 
-                return $this->formatDuration($working_seconds);
+                return $this->formatDuration($workingSeconds);
             }
         );
     }
 
     private function totalBreakSeconds(): int
     {
-        $total_seconds = 0;
+        $totalSeconds = 0;
 
-        foreach ($this->breaks->whereNotNull('break_out') as $break_record) {
-            $total_seconds += $this->timeToTimestamp($break_record->break_out)
-                - $this->timeToTimestamp($break_record->break_in);
+        foreach ($this->breaks->whereNotNull('break_out') as $breakRecord) {
+            $totalSeconds += $this->timeToTimestamp($breakRecord->break_out)
+                - $this->timeToTimestamp($breakRecord->break_in);
         }
 
-        return $total_seconds;
+        return $totalSeconds;
     }
 
     private function timeToTimestamp(string $time): int
     {
         $date = $this->date->format('Y-m-d');
 
-        return Carbon::parse($date . ' ' . $time, 'Asia/Tokyo')
+        return Carbon::parse($date.' '.$time, 'Asia/Tokyo')
             ->getTimestamp();
     }
 
@@ -94,9 +98,9 @@ class AttendanceRecord extends Model
     {
         return sprintf(
             '%02d:%02d:%02d',
-            intdiv($seconds, 3600),
-            intdiv($seconds % 3600, 60),
-            $seconds % 60
+            intdiv($seconds, self::SECONDS_PER_HOUR),
+            intdiv($seconds % self::SECONDS_PER_HOUR, self::SECONDS_PER_MINUTE),
+            $seconds % self::SECONDS_PER_MINUTE
         );
     }
 }

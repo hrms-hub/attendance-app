@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AttendanceFilterRequest;
 use App\Http\Requests\PunchRequest;
+use App\Models\AttendanceCorrectRequest;
+use App\Models\AttendanceRecord;
 use App\Models\User;
+use App\Services\AttendanceDetailData;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
-use App\Http\Requests\AttendanceFilterRequest;
-use App\Models\AttendanceRecord;
-use Illuminate\Support\Collection;
-use App\Models\AttendanceCorrectRequest;
-use App\Services\AttendanceDetailData;
 
 class AttendanceController extends Controller
 {
@@ -32,22 +32,21 @@ class AttendanceController extends Controller
         ]);
     }
 
-
     public function index(AttendanceFilterRequest $request): View
     {
         $user = $request->user();
 
         abort_if($user->admin_status, 403);
 
-        $date_value = $request->validated('date');
+        $dateValue = $request->validated('date');
 
-        $date = $date_value === null
+        $date = $dateValue === null
             ? CarbonImmutable::now('Asia/Tokyo')->startOfMonth()
-            : CarbonImmutable::parse($date_value . '-01', 'Asia/Tokyo');
+            : CarbonImmutable::parse($dateValue.'-01', 'Asia/Tokyo');
 
         $date = $date->locale('ja');
 
-        $attendance_records = $user->attendanceRecords()
+        $attendanceRecords = $user->attendanceRecords()
             ->with('breaks')
             ->whereBetween('date', [
                 $date->toDateString(),
@@ -55,8 +54,7 @@ class AttendanceController extends Controller
             ])
             ->get()
             ->keyBy(
-                fn (AttendanceRecord $attendance_record) =>
-                    $attendance_record->date->toDateString()
+                fn (AttendanceRecord $attendanceRecord) => $attendanceRecord->date->toDateString()
             );
 
         return view('user.user-attendance-list', [
@@ -65,17 +63,15 @@ class AttendanceController extends Controller
             'nextMonth' => $date->addMonth()->format('Y-m'),
             'formattedAttendanceRecords' => $this->formatAttendanceRecords(
                 $date,
-                $attendance_records
+                $attendanceRecords
             ),
         ]);
     }
 
-
-
     public function show(
         Request $request,
         int $id,
-        AttendanceDetailData $detail_data
+        AttendanceDetailData $detailData
     ): View|RedirectResponse {
         $user = $request->user();
 
@@ -85,11 +81,11 @@ class AttendanceController extends Controller
             ]);
         }
 
-        $attendance_record = $user->attendanceRecords()
+        $attendanceRecord = $user->attendanceRecords()
             ->with('breaks')
             ->findOrFail($id);
 
-        $application = $attendance_record->applications()
+        $application = $attendanceRecord->applications()
             ->with('proposalBreaks')
             ->where(
                 'approval_status',
@@ -99,14 +95,13 @@ class AttendanceController extends Controller
 
         return view('user.user-detail', [
             'user' => $user,
-            'data' => $detail_data->make(
-                $attendance_record,
+            'data' => $detailData->make(
+                $attendanceRecord,
                 $application,
                 $request->old()
             ),
         ]);
     }
-
 
     public function store(PunchRequest $request): RedirectResponse
     {
@@ -122,13 +117,13 @@ class AttendanceController extends Controller
             $date = $now->toDateString();
             $time = $now->format('H:i:s');
 
-            $attendance_record = $user->attendanceRecords()
+            $attendanceRecord = $user->attendanceRecords()
                 ->where('date', $date)
                 ->lockForUpdate()
                 ->first();
 
             if ($action === PunchRequest::ACTION_CLOCK_IN) {
-                if ($attendance_record === null) {
+                if ($attendanceRecord === null) {
                     $user->attendanceRecords()->create([
                         'date' => $date,
                         'clock_in' => $time,
@@ -138,18 +133,18 @@ class AttendanceController extends Controller
                 return;
             }
 
-            if ($attendance_record === null || $attendance_record->clock_out !== null) {
+            if ($attendanceRecord === null || $attendanceRecord->clock_out !== null) {
                 return;
             }
 
-            $open_break = $attendance_record->breaks()
+            $openBreak = $attendanceRecord->breaks()
                 ->whereNull('break_out')
                 ->lockForUpdate()
                 ->first();
 
             if ($action === PunchRequest::ACTION_CLOCK_OUT) {
-                if ($open_break === null) {
-                    $attendance_record->update([
+                if ($openBreak === null) {
+                    $attendanceRecord->update([
                         'clock_out' => $time,
                     ]);
                 }
@@ -158,8 +153,8 @@ class AttendanceController extends Controller
             }
 
             if ($action === PunchRequest::ACTION_BREAK_IN) {
-                if ($open_break === null) {
-                    $attendance_record->breaks()->create([
+                if ($openBreak === null) {
+                    $attendanceRecord->breaks()->create([
                         'break_in' => $time,
                     ]);
                 }
@@ -167,39 +162,39 @@ class AttendanceController extends Controller
                 return;
             }
 
-            if ($action === PunchRequest::ACTION_BREAK_OUT && $open_break !== null) {
-                $open_break->update([
+            if ($action === PunchRequest::ACTION_BREAK_OUT && $openBreak !== null) {
+                $openBreak->update([
                     'break_out' => $time,
                 ]);
             }
         });
 
-               return redirect('/attendance');
+        return redirect('/attendance');
     }
 
     private function formatAttendanceRecords(
         CarbonImmutable $date,
-        Collection $attendance_records
+        Collection $attendanceRecords
     ): array {
-        $formatted_records = [];
+        $formattedRecords = [];
 
         for ($day = 1; $day <= $date->daysInMonth; $day++) {
-            $current_date = $date->day($day);
-            $attendance_record = $attendance_records->get(
-                $current_date->toDateString()
+            $currentDate = $date->day($day);
+            $attendanceRecord = $attendanceRecords->get(
+                $currentDate->toDateString()
             );
 
-            $formatted_records[] = [
-                'id' => $attendance_record?->id,
-                'date' => $current_date->isoFormat('MM/DD(ddd)'),
-                'clock_in' => $this->formatClockTime($attendance_record?->clock_in),
-                'clock_out' => $this->formatClockTime($attendance_record?->clock_out),
-                'total_break_time' => $attendance_record?->total_break_time,
-                'total_time' => $attendance_record?->total_time,
+            $formattedRecords[] = [
+                'id' => $attendanceRecord?->id,
+                'date' => $currentDate->isoFormat('MM/DD(ddd)'),
+                'clock_in' => $this->formatClockTime($attendanceRecord?->clock_in),
+                'clock_out' => $this->formatClockTime($attendanceRecord?->clock_out),
+                'total_break_time' => $attendanceRecord?->total_break_time,
+                'total_time' => $attendanceRecord?->total_time,
             ];
         }
 
-        return $formatted_records;
+        return $formattedRecords;
     }
 
     private function formatClockTime(?string $time): string

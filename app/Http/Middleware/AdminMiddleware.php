@@ -12,7 +12,7 @@ class AdminMiddleware
     {
         $user = $request->user();
 
-        if ($user === null || !$user->admin_status) {
+        if ($user === null || ! $user->admin_status) {
             abort(403);
         }
 

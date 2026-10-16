@@ -12,20 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('attendance_records', function (Blueprint $table) {
-        $table->id();
+            $table->id();
 
-        $table->foreignId('user_id')
-            ->constrained('users')
-            ->onDelete('restrict');
+            $table->foreignId('user_id')
+                ->constrained('users')
+                ->onDelete('restrict');
 
-        $table->date('date');
-        $table->time('clock_in');
-        $table->time('clock_out')->nullable();
-        $table->string('comment', 255)->nullable();
-        $table->timestamps();
+            $table->date('date');
+            $table->time('clock_in');
+            $table->time('clock_out')->nullable();
+            $table->string('comment', 255)->nullable();
+            $table->timestamps();
 
-        $table->unique(['user_id', 'date']);
-        $table->index('date');
+            $table->unique(['user_id', 'date']);
+            $table->index('date');
         });
     }
 
@@ -34,6 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-       Schema::dropIfExists('attendance_records');
+        Schema::dropIfExists('attendance_records');
     }
 };

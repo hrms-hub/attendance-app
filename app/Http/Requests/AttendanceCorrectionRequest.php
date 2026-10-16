@@ -7,6 +7,8 @@ use Illuminate\Validation\Validator;
 
 class AttendanceCorrectionRequest extends FormRequest
 {
+    private const MAX_COMMENT_LENGTH = 255;
+
     private const CLOCK_ERROR = '出勤時間もしくは退勤時間が不適切な値です';
 
     private const BREAK_ERROR = '休憩時間が不適切な値です';
@@ -38,7 +40,7 @@ class AttendanceCorrectionRequest extends FormRequest
             'new_break_out' => ['sometimes', 'array'],
             'new_break_in.*' => ['bail', 'nullable', 'date_format:H:i'],
             'new_break_out.*' => ['bail', 'nullable', 'date_format:H:i'],
-            'comment' => ['bail', 'required', 'string', 'max:255'],
+            'comment' => ['bail', 'required', 'string', 'max:'.self::MAX_COMMENT_LENGTH],
         ];
     }
 
@@ -55,7 +57,7 @@ class AttendanceCorrectionRequest extends FormRequest
             'new_break_out.*.date_format' => self::BREAK_ERROR,
             'comment.required' => '備考を記入してください',
             'comment.string' => '備考は文字列で入力してください',
-            'comment.max' => '備考は255文字以内で入力してください',
+            'comment.max' => '備考は'.self::MAX_COMMENT_LENGTH.'文字以内で入力してください',
         ];
     }
 
@@ -70,10 +72,10 @@ class AttendanceCorrectionRequest extends FormRequest
                     return;
                 }
 
-                $clock_in = $this->input('new_clock_in');
-                $clock_out = $this->input('new_clock_out');
+                $clockIn = $this->input('new_clock_in');
+                $clockOut = $this->input('new_clock_out');
 
-                if ($clock_out < $clock_in) {
+                if ($clockOut < $clockIn) {
                     $validator->errors()->add(
                         'new_clock_out',
                         self::CLOCK_ERROR
@@ -89,21 +91,21 @@ class AttendanceCorrectionRequest extends FormRequest
                     return;
                 }
 
-                $this->validateBreaks($validator, $clock_in, $clock_out);
+                $this->validateBreaks($validator, $clockIn, $clockOut);
             },
         ];
     }
 
     private function validateBreaks(
         Validator $validator,
-        string $clock_in,
-        string $clock_out
+        string $clockIn,
+        string $clockOut
     ): void {
-        $break_starts = $this->input('new_break_in', []);
-        $break_ends = $this->input('new_break_out', []);
+        $breakStarts = $this->input('new_break_in', []);
+        $breakEnds = $this->input('new_break_out', []);
         $indexes = array_unique(array_merge(
-            array_keys($break_starts),
-            array_keys($break_ends)
+            array_keys($breakStarts),
+            array_keys($breakEnds)
         ));
         $intervals = [];
 
@@ -114,24 +116,24 @@ class AttendanceCorrectionRequest extends FormRequest
                 continue;
             }
 
-            $break_in = $break_starts[$index] ?? '';
-            $break_out = $break_ends[$index] ?? '';
+            $breakIn = $breakStarts[$index] ?? '';
+            $breakOut = $breakEnds[$index] ?? '';
 
-            if ($break_in === '' && $break_out === '') {
+            if ($breakIn === '' && $breakOut === '') {
                 continue;
             }
 
-            if ($break_in === '' || $break_out === '') {
-                $error_key = $break_in === ''
+            if ($breakIn === '' || $breakOut === '') {
+                $errorKey = $breakIn === ''
                     ? "new_break_in.{$index}"
                     : "new_break_out.{$index}";
 
-                $validator->errors()->add($error_key, self::BREAK_ERROR);
+                $validator->errors()->add($errorKey, self::BREAK_ERROR);
 
                 continue;
             }
 
-            if ($break_in < $clock_in || $break_in > $clock_out) {
+            if ($breakIn < $clockIn || $breakIn > $clockOut) {
                 $validator->errors()->add(
                     "new_break_in.{$index}",
                     self::BREAK_ERROR
@@ -140,7 +142,7 @@ class AttendanceCorrectionRequest extends FormRequest
                 continue;
             }
 
-            if ($break_out > $clock_out) {
+            if ($breakOut > $clockOut) {
                 $validator->errors()->add(
                     "new_break_out.{$index}",
                     self::BREAK_END_ERROR
@@ -149,7 +151,7 @@ class AttendanceCorrectionRequest extends FormRequest
                 continue;
             }
 
-            if ($break_out < $break_in) {
+            if ($breakOut < $breakIn) {
                 $validator->errors()->add(
                     "new_break_out.{$index}",
                     self::BREAK_ERROR
@@ -158,21 +160,32 @@ class AttendanceCorrectionRequest extends FormRequest
                 continue;
             }
 
-            if ($break_in === $break_out) {
+            if ($breakIn === $breakOut) {
                 continue;
             }
 
-            foreach ($intervals as [$previous_in, $previous_out]) {
-                if ($break_in < $previous_out && $previous_in < $break_out) {
-                    $validator->errors()->add(
-                        "new_break_in.{$index}",
-                        self::BREAK_ERROR
-                    );
-                    break;
-                }
+            if ($this->hasOverlappingBreak($intervals, $breakIn, $breakOut)) {
+                $validator->errors()->add(
+                    "new_break_in.{$index}",
+                    self::BREAK_ERROR
+                );
             }
 
-            $intervals[] = [$break_in, $break_out];
+            $intervals[] = [$breakIn, $breakOut];
         }
+    }
+
+    private function hasOverlappingBreak(
+        array $intervals,
+        string $breakIn,
+        string $breakOut
+    ): bool {
+        foreach ($intervals as [$previousIn, $previousOut]) {
+            if ($breakIn < $previousOut && $previousIn < $breakOut) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
