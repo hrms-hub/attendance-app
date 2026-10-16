@@ -29,7 +29,7 @@ class AttendanceController extends Controller
         $previousDay = $date->copy()->subDay()->toDateString();
         $nextDay = $date->copy()->addDay()->toDateString();
 
-        $users = User::where('admin_status', false)
+        $users = User::query()
             ->orderBy('id')
             ->get();
 
