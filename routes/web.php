@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AttendanceController as AdminAttendanceController;
+use App\Http\Controllers\Admin\AttendanceExportController;
 use App\Http\Controllers\Admin\CorrectionRequestController as AdminCorrectionRequestController;
 use App\Http\Controllers\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\AttendanceController;
@@ -92,6 +93,9 @@ Route::middleware(['auth', AdminMiddleware::class])->group(function () {
     Route::get('/admin/attendance/staff/{id}', [AdminStaffController::class, 'show'])
         ->whereNumber('id')
         ->name('admin_staff_attendance_list');
+
+    Route::post('/export', AttendanceExportController::class)
+        ->name('admin_attendance_export');
 
     Route::post('/admin/logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('admin_logout');
