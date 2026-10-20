@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AttendanceExportController;
 use App\Http\Controllers\Admin\CorrectionRequestController as AdminCorrectionRequestController;
 use App\Http\Controllers\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AttendanceReportController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\CorrectionRequestController;
 use App\Http\Middleware\AdminMiddleware;
@@ -54,6 +55,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/attendance/detail/{id}', [AttendanceController::class, 'show'])
         ->whereNumber('id')
         ->name('attendance_show');
+
+    Route::get('/attendance/report', [AttendanceReportController::class, 'index'])
+        ->name('attendance_report');
 
     Route::get('/attendance/{id}', [AttendanceController::class, 'show'])
         ->whereNumber('id')
