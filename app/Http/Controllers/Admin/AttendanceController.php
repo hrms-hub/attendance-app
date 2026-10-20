@@ -13,6 +13,12 @@ use Illuminate\View\View;
 
 class AttendanceController extends Controller
 {
+    /**
+     * 指定日の全ユーザーの勤怠一覧を表示する。
+     *
+     * @param  AttendanceFilterRequest  $request  対象日の検索条件
+     * @return View 管理者用の日次勤怠一覧画面
+     */
     public function index(AttendanceFilterRequest $request): View
     {
         $validated = $request->validated();
@@ -47,6 +53,14 @@ class AttendanceController extends Controller
         ]);
     }
 
+    /**
+     * 管理者向けに指定勤怠の詳細を表示する。
+     *
+     * @param  Request  $request  認証済みの管理者リクエスト
+     * @param  int  $id  勤怠ID
+     * @param  AttendanceDetailData  $detailData  詳細画面の表示データ作成処理
+     * @return View 管理者用の勤怠詳細画面
+     */
     public function show(
         Request $request,
         int $id,

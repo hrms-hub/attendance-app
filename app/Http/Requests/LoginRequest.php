@@ -6,6 +6,11 @@ use Laravel\Fortify\Http\Requests\LoginRequest as FortifyLoginRequest;
 
 class LoginRequest extends FortifyLoginRequest
 {
+    /**
+     * ログインに必要なメールアドレスとパスワードを検証する。
+     *
+     * @return array<string, array<int, string>> ログイン入力の検証規則
+     */
     public function rules(): array
     {
         return [
@@ -14,6 +19,11 @@ class LoginRequest extends FortifyLoginRequest
         ];
     }
 
+    /**
+     * ログイン入力の日本語エラーメッセージを返す。
+     *
+     * @return array<string, string> 検証エラーのメッセージ
+     */
     public function messages(): array
     {
         return [

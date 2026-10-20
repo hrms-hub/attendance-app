@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceCorrectRequest;
+use App\Models\ProposalBreak;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,13 +16,22 @@ class CorrectionRequestController extends Controller
 {
     private const TRANSACTION_ATTEMPTS = 3;
 
+    /**
+     * 休憩の提案内容を含む修正申請の詳細を管理者に表示する。
+     *
+     * @param  Request  $request  認証済みの管理者リクエスト
+     * @param  int  $id  修正申請ID
+     * @return View 修正申請の承認画面
+     */
     public function show(Request $request, int $id): View
     {
         abort_unless($request->user()->admin_status, 403);
 
         $application = AttendanceCorrectRequest::with([
             'user',
-            'proposalBreaks' => fn ($query) => $query->orderBy('id'),
+            'proposalBreaks' => function (HasMany $query): void {
+                $query->orderBy('id');
+            },
         ])->findOrFail($id);
 
         $application->new_clock_in = substr(
@@ -41,6 +52,13 @@ class CorrectionRequestController extends Controller
         ]);
     }
 
+    /**
+     * 未承認の申請を勤怠と休憩へ反映し、承認者と承認日時を記録する。
+     *
+     * @param  Request  $request  認証済みの管理者リクエスト
+     * @param  int  $id  承認する修正申請ID
+     * @return RedirectResponse 修正申請詳細画面への遷移
+     */
     public function approve(Request $request, int $id): RedirectResponse
     {
         $admin = $request->user();
@@ -79,7 +97,7 @@ class CorrectionRequestController extends Controller
             $proposalBreaks = $application->proposalBreaks()
                 ->orderBy('id')
                 ->get()
-                ->map(fn ($proposalBreak) => [
+                ->map(fn (ProposalBreak $proposalBreak): array => [
                     'break_in' => $proposalBreak->break_in,
                     'break_out' => $proposalBreak->break_out,
                 ])

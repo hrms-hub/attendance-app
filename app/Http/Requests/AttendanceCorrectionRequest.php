@@ -15,11 +15,19 @@ class AttendanceCorrectionRequest extends FormRequest
 
     private const BREAK_END_ERROR = '休憩時間もしくは退勤時間が不適切な値です';
 
+    /**
+     * 認証済みユーザーによる修正入力を許可する。
+     *
+     * @return bool 認証済みの場合はtrue
+     */
     public function authorize(): bool
     {
         return $this->user() !== null;
     }
 
+    /**
+     * 備考の前後にある半角・全角空白を検証前に除去する。
+     */
     protected function prepareForValidation(): void
     {
         $comment = $this->input('comment');
@@ -31,6 +39,11 @@ class AttendanceCorrectionRequest extends FormRequest
         }
     }
 
+    /**
+     * 出退勤・休憩・備考の基本的な入力規則を定義する。
+     *
+     * @return array<string, array<int, string>> 項目ごとの検証規則
+     */
     public function rules(): array
     {
         return [
@@ -44,6 +57,11 @@ class AttendanceCorrectionRequest extends FormRequest
         ];
     }
 
+    /**
+     * 入力規則に対応する日本語エラーメッセージを返す。
+     *
+     * @return array<string, string> 検証エラーのメッセージ
+     */
     public function messages(): array
     {
         return [
@@ -61,6 +79,11 @@ class AttendanceCorrectionRequest extends FormRequest
         ];
     }
 
+    /**
+     * 基本検証後に勤務時間と休憩時間の前後関係を検証する。
+     *
+     * @return array<int, callable> 追加検証のコールバック
+     */
     public function after(): array
     {
         return [
@@ -96,6 +119,13 @@ class AttendanceCorrectionRequest extends FormRequest
         ];
     }
 
+    /**
+     * 各休憩の入力漏れ、勤務時間外の指定、前後関係と重複を検証する。
+     *
+     * @param  Validator  $validator  検証エラーの追加先
+     * @param  string  $clockIn  出勤時刻（HH:MM）
+     * @param  string  $clockOut  退勤時刻（HH:MM）
+     */
     private function validateBreaks(
         Validator $validator,
         string $clockIn,
@@ -109,18 +139,25 @@ class AttendanceCorrectionRequest extends FormRequest
         ));
         $intervals = [];
 
-        foreach ($indexes as $index) {
+        collect($indexes)->each(function (int|string $index) use (
+            $validator,
+            $clockIn,
+            $clockOut,
+            $breakStarts,
+            $breakEnds,
+            &$intervals
+        ): void {
             if (
                 $validator->errors()->has("new_break_in.{$index}") || $validator->errors()->has("new_break_out.{$index}")
             ) {
-                continue;
+                return;
             }
 
             $breakIn = $breakStarts[$index] ?? '';
             $breakOut = $breakEnds[$index] ?? '';
 
             if ($breakIn === '' && $breakOut === '') {
-                continue;
+                return;
             }
 
             if ($breakIn === '' || $breakOut === '') {
@@ -130,7 +167,7 @@ class AttendanceCorrectionRequest extends FormRequest
 
                 $validator->errors()->add($errorKey, self::BREAK_ERROR);
 
-                continue;
+                return;
             }
 
             if ($breakIn < $clockIn || $breakIn > $clockOut) {
@@ -139,7 +176,7 @@ class AttendanceCorrectionRequest extends FormRequest
                     self::BREAK_ERROR
                 );
 
-                continue;
+                return;
             }
 
             if ($breakOut > $clockOut) {
@@ -148,7 +185,7 @@ class AttendanceCorrectionRequest extends FormRequest
                     self::BREAK_END_ERROR
                 );
 
-                continue;
+                return;
             }
 
             if ($breakOut < $breakIn) {
@@ -157,11 +194,11 @@ class AttendanceCorrectionRequest extends FormRequest
                     self::BREAK_ERROR
                 );
 
-                continue;
+                return;
             }
 
             if ($breakIn === $breakOut) {
-                continue;
+                return;
             }
 
             if ($this->hasOverlappingBreak($intervals, $breakIn, $breakOut)) {
@@ -172,20 +209,25 @@ class AttendanceCorrectionRequest extends FormRequest
             }
 
             $intervals[] = [$breakIn, $breakOut];
-        }
+        });
     }
 
+    /**
+     * 指定休憩が、それまでの休憩区間と重なるかを判定する。
+     *
+     * @param  array<int, array{0: string, 1: string}>  $intervals  それまでの休憩区間
+     * @param  string  $breakIn  判定対象の休憩開始時刻
+     * @param  string  $breakOut  判定対象の休憩終了時刻
+     * @return bool 時間帯が重複する場合はtrue
+     */
     private function hasOverlappingBreak(
         array $intervals,
         string $breakIn,
         string $breakOut
     ): bool {
-        foreach ($intervals as [$previousIn, $previousOut]) {
-            if ($breakIn < $previousOut && $previousIn < $breakOut) {
-                return true;
-            }
-        }
-
-        return false;
+        return collect($intervals)->contains(
+            fn (array $interval): bool => $breakIn < $interval[1]
+                && $interval[0] < $breakOut
+        );
     }
 }

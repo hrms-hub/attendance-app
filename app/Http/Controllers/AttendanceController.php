@@ -17,6 +17,12 @@ use Illuminate\View\View;
 
 class AttendanceController extends Controller
 {
+    /**
+     * 一般ユーザーの勤怠打刻画面を表示する。
+     *
+     * @param  Request  $request  認証済みリクエスト
+     * @return View 勤怠打刻画面
+     */
     public function create(Request $request): View
     {
         $user = $request->user();
@@ -32,6 +38,12 @@ class AttendanceController extends Controller
         ]);
     }
 
+    /**
+     * ログインユーザーの指定月の勤怠一覧を表示する。
+     *
+     * @param  AttendanceFilterRequest  $request  対象月の検索条件
+     * @return View 月次勤怠一覧画面
+     */
     public function index(AttendanceFilterRequest $request): View
     {
         $user = $request->user();
@@ -54,7 +66,7 @@ class AttendanceController extends Controller
             ])
             ->get()
             ->keyBy(
-                fn (AttendanceRecord $attendanceRecord) => $attendanceRecord->date->toDateString()
+                fn (AttendanceRecord $attendanceRecord): string => $attendanceRecord->date->toDateString()
             );
 
         return view('user.user-attendance-list', [
@@ -68,6 +80,14 @@ class AttendanceController extends Controller
         ]);
     }
 
+    /**
+     * 自分の勤怠詳細を表示し、管理者は管理画面へ案内する。
+     *
+     * @param  Request  $request  認証済みリクエスト
+     * @param  int  $id  勤怠ID
+     * @param  AttendanceDetailData  $detailData  詳細画面の表示データ作成処理
+     * @return View|RedirectResponse 勤怠詳細画面または管理画面への遷移
+     */
     public function show(
         Request $request,
         int $id,
@@ -103,6 +123,12 @@ class AttendanceController extends Controller
         ]);
     }
 
+    /**
+     * 出勤・退勤・休憩の打刻を排他制御のもとで記録する。
+     *
+     * @param  PunchRequest  $request  検証済みの打刻操作
+     * @return RedirectResponse 勤怠打刻画面への遷移
+     */
     public function store(PunchRequest $request): RedirectResponse
     {
         $action = $request->validated('action');
@@ -172,31 +198,42 @@ class AttendanceController extends Controller
         return redirect('/attendance');
     }
 
+    /**
+     * 月内の全日付に対して勤怠一覧の表示データを作成する。
+     *
+     * @param  CarbonImmutable  $date  対象月の基準日
+     * @param  Collection<string, AttendanceRecord>  $attendanceRecords  日付をキーにした勤怠
+     * @return array<int, array<string, int|string|null>> 日付順の表示データ
+     */
     private function formatAttendanceRecords(
         CarbonImmutable $date,
         Collection $attendanceRecords
     ): array {
-        $formattedRecords = [];
+        return collect(range(1, $date->daysInMonth))
+            ->map(function (int $day) use ($date, $attendanceRecords): array {
+                $currentDate = $date->day($day);
+                $attendanceRecord = $attendanceRecords->get(
+                    $currentDate->toDateString()
+                );
 
-        for ($day = 1; $day <= $date->daysInMonth; $day++) {
-            $currentDate = $date->day($day);
-            $attendanceRecord = $attendanceRecords->get(
-                $currentDate->toDateString()
-            );
-
-            $formattedRecords[] = [
-                'id' => $attendanceRecord?->id,
-                'date' => $currentDate->isoFormat('MM/DD(ddd)'),
-                'clock_in' => $this->formatClockTime($attendanceRecord?->clock_in),
-                'clock_out' => $this->formatClockTime($attendanceRecord?->clock_out),
-                'total_break_time' => $attendanceRecord?->total_break_time,
-                'total_time' => $attendanceRecord?->total_time,
-            ];
-        }
-
-        return $formattedRecords;
+                return [
+                    'id' => $attendanceRecord?->id,
+                    'date' => $currentDate->isoFormat('MM/DD(ddd)'),
+                    'clock_in' => $this->formatClockTime($attendanceRecord?->clock_in),
+                    'clock_out' => $this->formatClockTime($attendanceRecord?->clock_out),
+                    'total_break_time' => $attendanceRecord?->total_break_time,
+                    'total_time' => $attendanceRecord?->total_time,
+                ];
+            })
+            ->all();
     }
 
+    /**
+     * 打刻時刻を時間と分に整形する。
+     *
+     * @param  string|null  $time  HH:MM:SS形式の時刻
+     * @return string HH:MM形式の時刻。未打刻の場合は空文字
+     */
     private function formatClockTime(?string $time): string
     {
         return $time === null ? '' : substr($time, 0, 5);

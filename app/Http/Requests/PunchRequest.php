@@ -15,6 +15,11 @@ class PunchRequest extends FormRequest
 
     public const ACTION_CLOCK_OUT = 'clock_out';
 
+    /**
+     * 認証済みの一般ユーザーによる打刻操作を許可する。
+     *
+     * @return bool 一般ユーザーが認証済みの場合はtrue
+     */
     public function authorize(): bool
     {
         $user = $this->user();
@@ -22,6 +27,11 @@ class PunchRequest extends FormRequest
         return $user !== null && ! $user->admin_status;
     }
 
+    /**
+     * 出勤・退勤・休憩開始・休憩終了のいずれかの操作を検証する。
+     *
+     * @return array<string, array<int, mixed>> 打刻操作の検証規則
+     */
     public function rules(): array
     {
         return [
@@ -39,6 +49,11 @@ class PunchRequest extends FormRequest
         ];
     }
 
+    /**
+     * 打刻操作の日本語エラーメッセージを返す。
+     *
+     * @return array<string, string> 検証エラーのメッセージ
+     */
     public function messages(): array
     {
         return [

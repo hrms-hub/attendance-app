@@ -10,11 +10,21 @@ class RegisterRequest extends FormRequest
 
     private const MIN_PASSWORD_LENGTH = 8;
 
+    /**
+     * 未認証の利用者にも会員登録の入力を許可する。
+     *
+     * @return bool 常にtrue
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * 氏名・メールアドレス・パスワードと確認用入力を検証する。
+     *
+     * @return array<string, array<int, string>> 会員登録の検証規則
+     */
     public function rules(): array
     {
         return [
@@ -47,6 +57,11 @@ class RegisterRequest extends FormRequest
         ];
     }
 
+    /**
+     * 会員登録入力の日本語エラーメッセージを返す。
+     *
+     * @return array<string, string> 検証エラーのメッセージ
+     */
     public function messages(): array
     {
         return [

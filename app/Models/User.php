@@ -40,16 +40,31 @@ class User extends Authenticatable implements MustVerifyEmail
         'admin_status' => 'boolean',
     ];
 
+    /**
+     * ユーザー自身の勤怠を取得する。
+     *
+     * @return HasMany 勤怠のリレーション
+     */
     public function attendanceRecords(): HasMany
     {
         return $this->hasMany(AttendanceRecord::class);
     }
 
+    /**
+     * ユーザーが提出した勤怠修正申請を取得する。
+     *
+     * @return HasMany 提出した修正申請のリレーション
+     */
     public function attendanceCorrectRequests(): HasMany
     {
         return $this->hasMany(AttendanceCorrectRequest::class);
     }
 
+    /**
+     * ユーザーが承認した勤怠修正申請を取得する。
+     *
+     * @return HasMany 承認した修正申請のリレーション
+     */
     public function approvedRequests(): HasMany
     {
         return $this->hasMany(
@@ -58,6 +73,11 @@ class User extends Authenticatable implements MustVerifyEmail
         );
     }
 
+    /**
+     * 当日の打刻と未終了の休憩から勤務状態を判定する。
+     *
+     * @return Attribute 勤務状態を返すアクセサ
+     */
     protected function attendanceStatus(): Attribute
     {
         return Attribute::make(
