@@ -125,12 +125,12 @@ sail npm run dev
 
 | 用途 | URL |
 | --- | --- |
-| アプリケーション | http://localhost
-| 会員登録 | http://localhost/register
-| 一般ユーザーログイン | http://localhost/login
-| 管理者ログイン | http://localhost/admin/login
-| phpMyAdmin | http://localhost:8080
-| Mailpit | http://localhost:8025
+| アプリケーション | http://localhost |
+| 会員登録 | http://localhost/register |
+| 一般ユーザーログイン | http://localhost/login |
+| 管理者ログイン | http://localhost/admin/login |
+| phpMyAdmin | http://localhost:8080 |
+| Mailpit | http://localhost:8025 |
 | マイ勤怠レポート（一般ユーザー・メール認証済み） | http://localhost/attendance/report |
 
 ## ログイン情報
