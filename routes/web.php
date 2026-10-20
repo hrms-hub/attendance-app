@@ -40,7 +40,7 @@ Route::middleware('guest')->group(function () {
         ->name('admin_login_store');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/attendance', [AttendanceController::class, 'create'])
         ->name('attendance_create');
 

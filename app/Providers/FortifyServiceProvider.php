@@ -9,6 +9,7 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Http\Requests\LoginRequest;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -17,6 +18,7 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
+use Laravel\Fortify\Contracts\VerifyEmailResponse;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -44,6 +46,11 @@ class FortifyServiceProvider extends ServiceProvider
             LogoutResponse::class,
             \App\Http\Responses\LogoutResponse::class
         );
+
+        $this->app->singleton(
+            VerifyEmailResponse::class,
+            \App\Http\Responses\VerifyEmailResponse::class
+        );
     }
 
     /**
@@ -57,6 +64,10 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::loginView(function () {
             return view('user.user-login');
+        });
+
+        Fortify::verifyEmailView(function (): View {
+            return view('auth.verify-email');
         });
 
         Fortify::authenticateUsing(function (Request $request) {

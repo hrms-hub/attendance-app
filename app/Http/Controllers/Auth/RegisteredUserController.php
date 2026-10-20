@@ -28,6 +28,6 @@ class RegisteredUserController extends Controller
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
 
-        return redirect('/attendance');
+        return redirect()->route('verification.notice');
     }
 }

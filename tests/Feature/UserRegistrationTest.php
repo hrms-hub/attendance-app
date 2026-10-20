@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class UserRegistrationTest extends TestCase
@@ -140,6 +141,9 @@ class UserRegistrationTest extends TestCase
 
     public function test_user_can_register(): void
     {
+        // テスト中は実際のメール送信を行わない
+        Notification::fake();
+
         $response = $this->post('/register', [
             'name' => 'テストユーザー',
             'email' => 'test@example.com',
@@ -148,13 +152,14 @@ class UserRegistrationTest extends TestCase
         ]);
 
         $response->assertSessionHasNoErrors();
-        $response->assertRedirect('/attendance');
+        $response->assertRedirect(route('verification.notice'));
 
-        // 一般ユーザーとして正しい情報が保存されている
+        // メール未認証の一般ユーザーとして保存されている
         $this->assertDatabaseHas('users', [
             'name' => 'テストユーザー',
             'email' => 'test@example.com',
             'admin_status' => false,
+            'email_verified_at' => null,
         ]);
 
         $this->assertDatabaseCount('users', 1);

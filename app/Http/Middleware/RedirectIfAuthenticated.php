@@ -20,6 +20,10 @@ class RedirectIfAuthenticated
             if (Auth::guard($guard)->check()) {
                 $user = Auth::guard($guard)->user();
 
+                if (! $user->admin_status && ! $user->hasVerifiedEmail()) {
+                    return redirect()->route('verification.notice');
+                }
+
                 return redirect(
                     $user->admin_status
                         ? '/admin/attendance/list'

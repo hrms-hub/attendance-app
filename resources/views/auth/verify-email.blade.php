@@ -21,8 +21,10 @@
     </header>
     <main>
         <div class="verify__content">
-            @if (session('message'))
-                <div class="verify__flash">{{ session('message') }}</div>
+            @if (session('status') === 'verification-link-sent')
+                <div class="verify__flash">
+                    認証メールを再送しました。
+                </div>
             @endif
 
             <p class="verify__text">
