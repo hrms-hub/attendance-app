@@ -1,6 +1,6 @@
 # 勤怠管理アプリ
 
-一般ユーザーの出退勤・休憩打刻と勤怠修正申請、管理者による勤怠管理・申請承認を行うアプリケーションです。メール認証、月次勤怠CSV出力、マイ勤怠レポートにも対応しています。
+一般ユーザーの出退勤・休憩打刻と勤怠修正申請、管理者による勤怠管理・申請承認を行うアプリケーションです。メール認証、月次勤怠CSV出力、マイ勤怠レポート、勤怠の公開JSON APIにも対応しています。
 
 ## 環境構築
 
@@ -107,6 +107,7 @@ sail npm run dev
 | Laravel | 10（動作確認時：10.50.3） |
 | MySQL | 8.4（動作確認時：8.4.10） |
 | Laravel Fortify | 1.36.2 |
+| Laravel Sanctum | 3.3.3 |
 | Vite | 5.4.21 |
 | laravel-vite-plugin | 1.3.0 |
 | 開発環境 | Docker / Laravel Sail |
@@ -132,6 +133,7 @@ sail npm run dev
 | phpMyAdmin | http://localhost:8080 |
 | Mailpit | http://localhost:8025 |
 | マイ勤怠レポート（一般ユーザー・メール認証済み） | http://localhost/attendance/report |
+| 公開API・勤怠一覧 | http://localhost/api/v1/attendance-records |
 
 ## ログイン情報
 
@@ -150,3 +152,37 @@ sail npm run dev
 - メール認証：新規登録後に認証メールを送信します。Mailpitでメールを開き、認証リンクから認証を完了してください。認証案内画面から再送信できます。
 - 月次勤怠CSV出力：管理者がスタッフ別勤怠一覧で対象月を選び、CSVをダウンロードできます。
 - マイ勤怠レポート：ログイン中の一般ユーザーについて、今月を含む過去6か月の労働時間・残業時間・平均労働時間と月別推移を表示します。今月の遅刻・早退・長時間労働も集計します。
+- 公開JSON API：勤怠の一覧・詳細は認証不要で取得できます。登録・更新・削除にはSanctum認証が必要で、更新・削除は本人または管理者に限ります。
+
+## 公開API
+
+| メソッド | パス | 認証・認可 | 成功時 |
+| --- | --- | --- | --- |
+| GET | /api/v1/attendance-records | 不要 | 200 |
+| GET | /api/v1/attendance-records/{attendanceRecord} | 不要 | 200 |
+| POST | /api/v1/attendance-records | Sanctum | 201 |
+| PUT / PATCH | /api/v1/attendance-records/{attendanceRecord} | Sanctum・本人または管理者 | 200 |
+| DELETE | /api/v1/attendance-records/{attendanceRecord} | Sanctum・本人または管理者 | 204・本文なし |
+
+一覧は日付降順で、同じ日付ではID降順です。任意の検索条件として `user_id`、`date`（YYYY-MM-DD）、`month`（YYYY-MM）、`page`、`per_page` を指定できます。ページ番号の既定値は1、1ページの件数は既定20・最大100です。レスポンスは `data`・`links`・`meta` を含みます。
+
+一覧にはユーザー名、出退勤、実働・休憩の合計、備考を返します。詳細にはユーザーのIDと名前、休憩、修正申請の内訳も含めます。メールアドレスやパスワードは公開しません。出退勤・休憩時刻はHH:MM:SS、合計時間は分未満を切り捨てたHH:MMです。未退勤の実働時間はnull、終了済み休憩がない場合の休憩合計は00:00です。
+
+書き込みリクエストには `Authorization: Bearer <Sanctumで発行したトークン>` を付けてください。JSONを送信する際は `Content-Type: application/json`、`Accept: application/json` を指定します。トークンは対象Userモデルの `createToken('external-app')->plainTextToken` で発行できます。
+
+登録は `date`・`clock_in` が必須、`clock_out`・`comment` が任意です。`date` はYYYY-MM-DD、出退勤時刻はHH:MM:SSで指定し、退勤は出勤より後にします。備考は255文字以内です。登録時のユーザーIDは認証ユーザーから設定され、送信された `user_id` は採用されません。
+
+PUT・PATCHはいずれも部分更新に対応し、未送信の項目は維持します。送信する `date`・`clock_in` は必須入力として検証します。`clock_out`・`comment` はnullで消去できます。時刻の前後関係は、未送信の既存時刻も含めて検証します。
+
+未認証は401、他人の勤怠への更新・削除は403、存在しない勤怠は404、入力不正は422を返します。削除すると、対象勤怠に紐づく休憩・修正申請・申請内の休憩も削除されます。
+
+### APIテスト
+
+テスト専用のMySQLデータベース `testing` を使用します。
+
+```bash
+sail test --filter=AttendanceRecordApiTest
+sail test
+```
+
+APIテストでは読み取り・検索・ページネーション・認証・認可・部分更新・日本語エラー・関連削除・Bearerトークン認証・一覧のクエリ数を検証します。
