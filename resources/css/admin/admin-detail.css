@@ -94,6 +94,11 @@
     outline: none;
 }
 
+.form__input--name {
+    width: 200px;
+    max-width: 100%;
+}
+
 /* ボタン */
 .form__button {
     text-align: right;

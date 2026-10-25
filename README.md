@@ -103,7 +103,7 @@ sail npm run dev
 
 | 技術 | バージョン・構成 |
 | --- | --- |
-| PHP | 8.2（動作確認時：8.2.33） |
+| PHP | 8.2（動作確認時：8.2.34） |
 | Laravel | 10（動作確認時：10.50.3） |
 | MySQL | 8.4（動作確認時：8.4.10） |
 | Laravel Fortify | 1.36.2 |
@@ -176,13 +176,29 @@ PUT・PATCHはいずれも部分更新に対応し、未送信の項目は維持
 
 未認証は401、他人の勤怠への更新・削除は403、存在しない勤怠は404、入力不正は422を返します。削除すると、対象勤怠に紐づく休憩・修正申請・申請内の休憩も削除されます。
 
-### APIテスト
+## テスト
 
-テスト専用のMySQLデータベース `testing` を使用します。
+PHPUnitのテストコードを `tests/Feature/` に配置しています。応用項目の対応は次のとおりです。
+
+| テストケースID | テストファイル | 主な検証内容 |
+| --- | --- | --- |
+| 16：メール認証 | EmailVerificationTest.php | 登録時の認証メール送信、認証案内のリンク、認証後の遷移、再送・署名検証 |
+| 17：公開API読み取り | AttendanceRecordApiTest.php | 一覧・meta、検索・ページ分割、ユーザー・休憩・修正申請を含む詳細、404 |
+| 18：公開API書き込み | AttendanceRecordApiTest.php | 登録201、日本語422、PUT/PATCH更新200、削除204、DBへの反映、存在しない対象の404 |
+| 19：Sanctum認証 | AttendanceRecordApiTest.php | 未認証401、本人・管理者の操作許可、他人の操作403、実際のBearerトークン認証 |
+| 20：マイ勤怠レポート | AttendanceReportTest.php | ゲストのリダイレクト、集計・月次推移・異常検知、データなし、未退勤・秒単位の境界 |
+
+AttendanceReportSeederTest.phpでは、指定ダミーデータの予測値、再実行時の重複防止、既存勤怠・休憩の保持を検証しています。
+
+テスト専用のMySQLデータベース `testing` を使用します。設定キャッシュを解除して、全テストを実行してください。
 
 ```bash
-sail test --filter=AttendanceRecordApiTest
+sail artisan config:clear
 sail test
 ```
 
-APIテストでは読み取り・検索・ページネーション・認証・認可・部分更新・日本語エラー・関連削除・Bearerトークン認証・一覧のクエリ数を検証します。
+APIテストだけを実行する場合は、次のコマンドを使用します。
+
+```bash
+sail test --filter=AttendanceRecordApiTest
+```
