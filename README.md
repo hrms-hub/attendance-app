@@ -116,7 +116,7 @@ sail npm run dev
 
 ## ER図
 
-勤怠管理に関係する5テーブルを示します。Laravel標準の `password_reset_tokens`、`failed_jobs`、`personal_access_tokens` は省略しています。
+勤怠管理に関係する業務テーブル5個と、Laravel標準・Sanctum関連の `password_reset_tokens`、`failed_jobs`、`personal_access_tokens` を含む、全8テーブルのER図を示します。
 
 ![勤怠管理アプリのER図](docs/er-diagram.png)
 
