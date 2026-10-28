@@ -282,4 +282,29 @@ class AdminAttendanceListTest extends TestCase
             Carbon::setTestNow();
         }
     }
+
+    /**
+     * 一般ユーザーは管理者の勤怠一覧にアクセスできない
+     */
+    public function test_normal_user_cannot_access_admin_attendance_list(): void
+    {
+        $user = User::factory()->create([
+            'admin_status' => false,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->get('/admin/attendance/list');
+
+        $response->assertForbidden();
+    }
+
+    /**
+     * 未ログイン時は管理者ログイン画面に移動する
+     */
+    public function test_guest_is_redirected_to_admin_login(): void
+    {
+        $response = $this->get('/admin/attendance/list');
+
+        $response->assertRedirect(route('admin_login'));
+    }
 }
